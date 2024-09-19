@@ -18,9 +18,13 @@ public class ccwc {
             printUsageAndExit();
         }
 
-        // Se non viene fornito nessun file, leggi dallo standard input
+        // Verifica se leggere da stdin o da un file
         boolean readFromStdin = (args.length == 0 || (args.length == 1 && args[0].startsWith("-")));
+
+        // Verifica se è stato specificato un'opzione
         String option = (args.length == 2) ? args[0] : (args.length == 1 && args[0].startsWith("-") ? args[0] : "");
+
+        // Verifica se è stato specificato un file
         String fileName = (args.length == 2) ? args[1] : (args.length == 1 && !args[0].startsWith("-") ? args[0] : null);
 
         try {
@@ -134,6 +138,7 @@ public class ccwc {
     }
 
 
+    // Conta il numero di righe di un file
     static long countLines(String fileName) throws IOException {
         Path path = getPath(fileName);
         try (Stream<String> lines = Files.lines(path)) {
@@ -141,10 +146,12 @@ public class ccwc {
         }
     }
 
+    // Conta il numero di byte di un file
     static long countBytes(String fileName) throws IOException {
         return Files.size(getPath(fileName));
     }
 
+    // Conta il numero di parole di un file
     static long countWords(String fileName) throws IOException {
         Path path = getPath(fileName);
         try (Stream<String> lines = Files.lines(path)) {
@@ -154,6 +161,7 @@ public class ccwc {
         }
     }
 
+    // Conta il numero di caratteri di un file
     static long countCharacters(String fileName) throws IOException {
         Path path = getPath(fileName);
         try (Stream<String> lines = Files.lines(path, StandardCharsets.UTF_8)) {
@@ -161,6 +169,7 @@ public class ccwc {
         }
     }
 
+    // Ottiene il percorso di un file
     static Path getPath(String fileName) throws IOException {
         Path path = Paths.get(fileName);
         if (!Files.exists(path)) {
