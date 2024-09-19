@@ -40,19 +40,19 @@ public class ccwc {
     private static void processInput(String option, BufferedReader reader) throws IOException {
         switch (option) {
             case "-c":
-                logResult(countBytesFromInput(reader), null);
+                logResult(countBytesFromInput(reader), "");
                 break;
             case "-l":
-                logResult(countLinesFromInput(reader), null);
+                logResult(countLinesFromInput(reader), "");
                 break;
             case "-w":
-                logResult(countWordsFromInput(reader), null);
+                logResult(countWordsFromInput(reader), "");
                 break;
             case "-m":
-                logResult(countCharactersFromInput(reader), null);
+                logResult(countCharactersFromInput(reader), "");
                 break;
             case "":
-                logResult(countBytesFromInput(reader), countLinesFromInput(reader),countWordsFromInput(reader),null);
+                logResult(countBytesFromInput(reader), countLinesFromInput(reader),countWordsFromInput(reader),"");
                 break;
             default:
                 printUsageAndExit();
