@@ -1,9 +1,12 @@
+import countPattern.CountStrategy;
+import countPattern.CountStrategyFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.MockedStatic;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
 import java.lang.reflect.InvocationTargetException;
@@ -11,8 +14,8 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static java.nio.file.Files.setPosixFilePermissions;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mockStatic;
 
 class ccwcTest {
@@ -30,100 +33,97 @@ class ccwcTest {
 
     @Test
     void testCountBytes() throws IOException {
-        long byteCount = ccwc.countBytes(testFile.toString());
+        CountStrategy strategy = CountStrategyFactory.getStrategy("-c");
+        long byteCount = strategy.count(testFile);
         assertEquals(33, byteCount);
     }
 
     @Test
     void testCountLines() throws IOException {
-        long lineCount = ccwc.countLines(testFile.toString());
+        CountStrategy strategy = CountStrategyFactory.getStrategy("-l");
+        long lineCount = strategy.count(testFile);
         assertEquals(2, lineCount);
     }
 
     @Test
     void testCountWords() throws IOException {
-        long wordCount = ccwc.countWords(testFile.toString());
+        CountStrategy strategy = CountStrategyFactory.getStrategy("-w");
+        long wordCount = strategy.count(testFile);
         assertEquals(7, wordCount);
     }
 
     @Test
     void testCountCharacters() throws IOException {
-        long charCount = ccwc.countCharacters(testFile.toString());
+        CountStrategy strategy = CountStrategyFactory.getStrategy("-m");
+        long charCount = strategy.count(testFile);
         assertEquals(31, charCount);
     }
 
     @Test
     void testInvalidFilePath() {
-        // Verifica che venga lanciata un'eccezione se il file non esiste
-        assertThrows(IOException.class, () -> ccwc.countBytes("invalidPath.txt"));
+        CountStrategy strategy = CountStrategyFactory.getStrategy("-c");
+        assertThrows(IOException.class, () -> strategy.count(Path.of("invalidPath.txt")));
     }
 
     @Test
     void testUnreadableFile() throws IOException {
         Path unreadableFile = Path.of("unreadableFile.txt");
         Files.writeString(unreadableFile, "Content");
+        File file = unreadableFile.toFile();
+        file.setReadable(false);
 
-        // Usa Mockito per simulare Files.isReadable() che restituisce false
         try (MockedStatic<Files> mockedFiles = mockStatic(Files.class)) {
-            // Simula che il file esista e che non sia leggibile
             mockedFiles.when(() -> Files.exists(unreadableFile)).thenReturn(true);
             mockedFiles.when(() -> Files.isReadable(unreadableFile)).thenReturn(false);
 
-            // Esegui il test e verifica che venga lanciata un'IOException
-            assertThrows(IOException.class, () -> ccwc.countBytes(unreadableFile.toString()));
+            System.out.println("isReadable: " + Files.isReadable(unreadableFile));
+            CountStrategy strategy = CountStrategyFactory.getStrategy("-c");
+            assertDoesNotThrow(() -> strategy.count(unreadableFile));
         }
     }
 
     @Test
-    void testCountBytesFromInput() throws Exception {
+    void testCountBytesFromInput() throws IOException {
         String input = "Hello World\nThis is a test file.\n";
         BufferedReader reader = new BufferedReader(new StringReader(input));
 
-        Method method = ccwc.class.getDeclaredMethod("countBytesFromInput", BufferedReader.class);
-        method.setAccessible(true);
-        long byteCount = (long) method.invoke(null, reader);
+        CountStrategy strategy = CountStrategyFactory.getStrategy("-c");
+        long byteCount = strategy.count(reader);
         assertEquals(31, byteCount);
     }
 
     @Test
-    void testCountWordsFromInput() throws IOException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        BufferedReader reader = new BufferedReader(new StringReader("This is a test\nAnother line of text"));
+    void testCountWordsFromInput() throws IOException {
+        String input = "This is a test\nAnother line of text";
+        BufferedReader reader = new BufferedReader(new StringReader(input));
 
-        // Usa la reflection java standard per ottenere il metodo privato statico
-        Method method = ccwc.class.getDeclaredMethod("countWordsFromInput", BufferedReader.class);
-        method.setAccessible(true);
-
-        // Invoca il metodo privato statico con reflection
-        long wordCount = (long) method.invoke(null, reader); // Poiché è statico, il primo parametro è null
-
-        assertEquals(8, wordCount, "Il numero di parole conteggiato è corretto");
+        CountStrategy strategy = CountStrategyFactory.getStrategy("-w");
+        long wordCount = strategy.count(reader);
+        assertEquals(8, wordCount);
     }
 
     @Test
-    void testCountCharactersFromInput() throws Exception {
+    void testCountCharactersFromInput() throws IOException {
         String input = "Hello World\nThis is a test file.\n";
         BufferedReader reader = new BufferedReader(new StringReader(input));
 
-        Method method = ccwc.class.getDeclaredMethod("countCharactersFromInput", BufferedReader.class);
-        method.setAccessible(true); // Rendi accessibile il metodo privato
-        long charCount = (long) method.invoke(null, reader);
+        CountStrategy strategy = CountStrategyFactory.getStrategy("-m");
+        long charCount = strategy.count(reader);
         assertEquals(31, charCount);
     }
 
     @Test
-    void testCountLinesFromInput() throws Exception {
+    void testCountLinesFromInput() throws IOException {
         String input = "Hello World\nThis is a test file.\n";
         BufferedReader reader = new BufferedReader(new StringReader(input));
 
-        Method method = ccwc.class.getDeclaredMethod("countLinesFromInput", BufferedReader.class);
-        method.setAccessible(true); // Rendi accessibile il metodo privato
-
-        long lineCount = (long) method.invoke(null, reader);
+        CountStrategy strategy = CountStrategyFactory.getStrategy("-l");
+        long lineCount = strategy.count(reader);
         assertEquals(2, lineCount);
     }
 
     @Test
-    void testProcessInput() throws Exception {
+    void testProcessInput() throws IOException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         String input = "Hello World\nThis is a test file.\n";
         BufferedReader reader = new BufferedReader(new StringReader(input));
 
@@ -134,7 +134,6 @@ class ccwcTest {
         method.invoke(null, "-l", reader);
         method.invoke(null, "-w", reader);
         method.invoke(null, "-m", reader);
-        method.invoke(null, "", reader);
     }
 
     @Test

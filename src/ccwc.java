@@ -1,7 +1,9 @@
+import countPattern.CountStrategy;
+import countPattern.CountStrategyFactory;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -42,64 +44,9 @@ public class ccwc {
     }
 
     private static void processInput(String option, BufferedReader reader) throws IOException {
-        switch (option) {
-            case "-c":
-                logResult(countBytesFromInput(reader), "");
-                break;
-            case "-l":
-                logResult(countLinesFromInput(reader), "");
-                break;
-            case "-w":
-                logResult(countWordsFromInput(reader), "");
-                break;
-            case "-m":
-                logResult(countCharactersFromInput(reader), "");
-                break;
-            case "":
-                logResult(countBytesFromInput(reader), countLinesFromInput(reader),countWordsFromInput(reader),"");
-                break;
-            default:
-                printUsageAndExit();
-        }
-    }
-
-    // Conta il numero di byte dallo standard input
-    private static long countBytesFromInput(BufferedReader reader) throws IOException {
-        long byteCount = 0;
-        String line;
-        while ((line = reader.readLine()) != null) {
-            byteCount += line.getBytes(StandardCharsets.UTF_8).length;
-        }
-        return byteCount;
-    }
-
-    // Conta il numero di parole dallo standard input
-    private static long countWordsFromInput(BufferedReader reader) throws IOException {
-        long wordCount = 0;
-        String line;
-        while ((line = reader.readLine()) != null) {
-            wordCount += Stream.of(line.trim().split("\\s+")).filter(word -> !word.isEmpty()).count();
-        }
-        return wordCount;
-    }
-
-    // Conta il numero di caratteri dallo standard input
-    private static long countCharactersFromInput(BufferedReader reader) throws IOException {
-        long charCount = 0;
-        String line;
-        while ((line = reader.readLine()) != null) {
-            charCount += line.length();
-        }
-        return charCount;
-    }
-
-    // Conta il numero di righe dallo standard input
-    private static long countLinesFromInput(BufferedReader reader) throws IOException {
-        long lineCount = 0;
-        while (reader.readLine() != null) {
-            lineCount++;
-        }
-        return lineCount;
+            CountStrategy strategy = CountStrategyFactory.getStrategy(option);
+            long count = strategy.count(reader);
+            logResult(count, "");
     }
 
     private static void printUsageAndExit() {
@@ -108,24 +55,25 @@ public class ccwc {
     }
 
     private static void processFile(String option, String fileName) throws IOException {
-        switch (option) {
-            case "-c":
-                logResult(countBytes(fileName), fileName);
-                break;
-            case "-l":
-                logResult(countLines(fileName), fileName);
-                break;
-            case "-w":
-                logResult(countWords(fileName), fileName);
-                break;
-            case "-m":
-                logResult(countCharacters(fileName), fileName);
-                break;
-            case "":
-                logResult(countLines(fileName),countWords(fileName), countBytes(fileName),   fileName);
-                break;
-            default:
-                printUsageAndExit();
+        if (option.isEmpty()) {
+            CountStrategy[] strategies = new CountStrategy[]{
+                    CountStrategyFactory.getStrategy("-c"),
+                    CountStrategyFactory.getStrategy("-l"),
+                    CountStrategyFactory.getStrategy("-w"),
+            };
+            long[] counts = Stream.of(strategies).mapToLong(strategy -> {
+                try {
+                    return strategy.count(getPath(fileName));
+                } catch (IOException e) {
+                    logger.log(Level.SEVERE, e, () -> "Error reading input");
+                    return 0;
+                }
+            }).toArray();
+            logResult(counts[0], counts[1], counts[2], fileName);
+        } else {
+            CountStrategy strategy = CountStrategyFactory.getStrategy(option);
+            long count = strategy.count(getPath(fileName));
+            logResult(count, fileName);
         }
     }
 
@@ -137,37 +85,6 @@ public class ccwc {
         System.out.println(String.format("%d %d %d %s", byteCount, lineCount, wordCount, filename));
     }
 
-
-    // Conta il numero di righe di un file
-    static long countLines(String fileName) throws IOException {
-        Path path = getPath(fileName);
-        try (Stream<String> lines = Files.lines(path)) {
-            return lines.count();
-        }
-    }
-
-    // Conta il numero di byte di un file
-    static long countBytes(String fileName) throws IOException {
-        return Files.size(getPath(fileName));
-    }
-
-    // Conta il numero di parole di un file
-    static long countWords(String fileName) throws IOException {
-        Path path = getPath(fileName);
-        try (Stream<String> lines = Files.lines(path)) {
-            return lines.flatMap(line -> Stream.of(line.trim().split("\\s+")))
-                        .filter(word -> !word.isEmpty())
-                        .count();
-        }
-    }
-
-    // Conta il numero di caratteri di un file
-    static long countCharacters(String fileName) throws IOException {
-        Path path = getPath(fileName);
-        try (Stream<String> lines = Files.lines(path, StandardCharsets.UTF_8)) {
-            return lines.mapToLong(String::length).sum();
-        }
-    }
 
     // Ottiene il percorso di un file
     static Path getPath(String fileName) throws IOException {
